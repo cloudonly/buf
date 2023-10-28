@@ -63,17 +63,21 @@ func executePlugin(
 	if pluginInfo.Path != "" {
 		options = append(options, bufpluginexec.GenerateWithPluginPath(pluginInfo.Path))
 	}
+	requests, err := bufimage.ImagesToCodeGeneratorRequests(
+		images,
+		strings.Join(pluginInfo.Opt, ","),
+		bufpluginexec.DefaultVersion,
+		false,
+		false,
+	)
+	if err != nil {
+		return nil, err
+	}
 	response, err := generator.Generate(
 		ctx,
 		container,
 		pluginName,
-		bufimage.ImagesToCodeGeneratorRequests(
-			images,
-			strings.Join(pluginInfo.Opt, ","),
-			bufpluginexec.DefaultVersion,
-			false,
-			false,
-		),
+		requests,
 		options...,
 	)
 	if err != nil {

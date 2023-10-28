@@ -291,17 +291,21 @@ func (g *generator) execLocalPlugin(
 		bufpluginexec.GenerateWithPluginPath(pluginConfig.Path()...),
 		bufpluginexec.GenerateWithProtocPath(pluginConfig.ProtocPath()),
 	}
+	requests, err := bufimage.ImagesToCodeGeneratorRequests(
+		pluginImages,
+		pluginConfig.Opt(),
+		nil,
+		includeImports,
+		includeWellKnownTypes,
+	)
+	if err != nil {
+		return nil, err
+	}
 	response, err := g.pluginexecGenerator.Generate(
 		ctx,
 		container,
 		pluginConfig.Name(),
-		bufimage.ImagesToCodeGeneratorRequests(
-			pluginImages,
-			pluginConfig.Opt(),
-			nil,
-			includeImports,
-			includeWellKnownTypes,
-		),
+		requests,
 		generateOptions...,
 	)
 	if err != nil {
