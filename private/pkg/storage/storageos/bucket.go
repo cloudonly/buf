@@ -63,7 +63,8 @@ func (b *bucket) Get(ctx context.Context, path string) (storage.ReadObjectCloser
 	if err != nil {
 		return nil, err
 	}
-	if err := b.validateExternalPath(path, externalPath); err != nil {
+	fileInfo, err := b.validateExternalPath(path, externalPath)
+	if err != nil {
 		return nil, err
 	}
 	resolvedPath := externalPath
@@ -82,6 +83,7 @@ func (b *bucket) Get(ctx context.Context, path string) (storage.ReadObjectCloser
 		path,
 		externalPath,
 		file,
+		fileInfo,
 	), nil
 }
 
@@ -90,13 +92,15 @@ func (b *bucket) Stat(ctx context.Context, path string) (storage.ObjectInfo, err
 	if err != nil {
 		return nil, err
 	}
-	if err := b.validateExternalPath(path, externalPath); err != nil {
+	fileInfo, err := b.validateExternalPath(path, externalPath)
+	if err != nil {
 		return nil, err
 	}
 	// we could use fileInfo.Name() however we might as well use the externalPath
 	return storageutil.NewObjectInfo(
 		path,
 		externalPath,
+		fileInfo.Size(),
 	), nil
 }
 
@@ -146,6 +150,7 @@ func (b *bucket) Walk(
 					storageutil.NewObjectInfo(
 						path,
 						externalPath,
+						fileInfo.Size(),
 					),
 				); err != nil {
 					return err
@@ -252,7 +257,7 @@ func (b *bucket) getExternalPath(path string) (string, error) {
 	return normalpath.Unnormalize(realClean), nil
 }
 
-func (b *bucket) validateExternalPath(path string, externalPath string) error {
+func (b *bucket) validateExternalPath(path string, externalPath string) (os.FileInfo, error) {
 	// this is potentially introducing two calls to a file
 	// instead of one, ie we do both Stat and Open as opposed to just Open
 	// we do this to make sure we are only reading regular files
@@ -265,7 +270,7 @@ func (b *bucket) validateExternalPath(path string, externalPath string) error {
 	}
 	if err != nil {
 		if os.IsNotExist(err) {
-			return &fs.PathError{Op: "stat", Path: path, Err: fs.ErrNotExist}
+			return nil, &fs.PathError{Op: "stat", Path: path, Err: fs.ErrNotExist}
 		}
 		// The path might have a regular file in one of its
 		// elements (e.g. 'foo/bar/baz.proto' where 'bar' is a
@@ -284,7 +289,7 @@ func (b *bucket) validateExternalPath(path string, externalPath string) error {
 		if len(elements) == 1 {
 			// The path is a single element, so there aren't
 			// any other files to check.
-			return err
+			return nil, err
 		}
 		for i := len(elements) - 1; i >= 0; i-- {
 			parentFileInfo, err := os.Stat(filepath.Join(elements[:i]...))
@@ -295,17 +300,17 @@ func (b *bucket) validateExternalPath(path string, externalPath string) error {
 				// This error primarily serves as a sentinel error,
 				// but we preserve the original path argument so that
 				// the error still makes sense to the user.
-				return &fs.PathError{Op: "stat", Path: path, Err: fs.ErrNotExist}
+				return nil, &fs.PathError{Op: "stat", Path: path, Err: fs.ErrNotExist}
 			}
 		}
-		return err
+		return nil, err
 	}
 	if !fileInfo.Mode().IsRegular() {
 		// making this a user error as any access means this was generally requested
 		// by the user, since we only call the function for Walk on regular files
-		return &fs.PathError{Op: "stat", Path: path, Err: fs.ErrNotExist}
+		return nil, &fs.PathError{Op: "stat", Path: path, Err: fs.ErrNotExist}
 	}
-	return nil
+	return fileInfo, nil
 }
 
 func (b *bucket) getExternalPrefix(prefix string) (string, error) {
@@ -333,11 +338,13 @@ func newReadObjectCloser(
 	path string,
 	externalPath string,
 	file *os.File,
+	fileInfo os.FileInfo,
 ) *readObjectCloser {
 	return &readObjectCloser{
 		ObjectInfo: storageutil.NewObjectInfo(
 			path,
 			externalPath,
+			fileInfo.Size(),
 		),
 		file: file,
 	}

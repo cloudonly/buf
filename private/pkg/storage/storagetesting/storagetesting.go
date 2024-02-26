@@ -80,6 +80,7 @@ func AssertObjectInfo(
 		storageutil.NewObjectInfo(
 			path,
 			externalPath,
+			objectInfo.Size(),
 		),
 		objectInfo,
 	)

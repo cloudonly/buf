@@ -18,6 +18,7 @@ import (
 	"github.com/bufbuild/buf/private/bufpkg/bufmodule"
 	"github.com/bufbuild/buf/private/pkg/protodescriptor"
 	"github.com/gofrs/uuid/v5"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/descriptorpb"
 )
 
@@ -91,6 +92,10 @@ func (f *imageFile) ExternalPath() string {
 		return f.Path()
 	}
 	return f.externalPath
+}
+
+func (f *imageFile) Size() int64 {
+	return int64(proto.Size(f.fileDescriptorProto))
 }
 
 func (f *imageFile) ModuleFullName() bufmodule.ModuleFullName {

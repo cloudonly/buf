@@ -303,6 +303,7 @@ func replaceObjectInfoPath(objectInfo ObjectInfo, path string) ObjectInfo {
 	return storageutil.NewObjectInfo(
 		path,
 		objectInfo.ExternalPath(),
+		objectInfo.Size(),
 	)
 }
 

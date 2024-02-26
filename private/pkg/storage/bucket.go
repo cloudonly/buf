@@ -166,6 +166,10 @@ type ObjectInfo interface {
 	//   Path: baz/bat.proto
 	//   ExternalPath: s3://foo/baz/bat.proto
 	ExternalPath() string
+	// Size is the size of the object in bytes.
+	//
+	// This will always be non-negative.
+	Size() int64
 }
 
 // ReadObject is an object read from a bucket.
